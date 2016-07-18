@@ -23,5 +23,6 @@ module.exports = [
     {"name":"Manipur","id":"22"},
     {"name":"Meghalaya","id":"23"},
     {"name":"Mizoram","id":"24"},{"name":"Nagaland","id":"25"},{"name":"Odisha","id":"26"},{"name":"Puducherry","id":"27"},{"name":"Punjab","id":"28"},{"name":"Rajasthan","id":"29"},{"name":"Sikkim","id":"30"},{"name":"Tamil Nadu","id":"31"},{"name":"Telangana","id":"32"},{"name":"Tripura","id":"33"},{"name":"Uttar Pradesh","id":"34"},{"name":"Uttarakhand","id":"35"},
-    {"name":"West Bengal","id":"36"}
+    {"name":"West B" +
+    "engal","id":"36"}
 ];
