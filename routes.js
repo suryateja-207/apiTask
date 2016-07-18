@@ -6,91 +6,47 @@ var express = require('express');
 var router = express.Router();
 var mongo = require('mongodb');
 var mongoose = require('mongoose'), Schema = mongoose.Schema;
-var Server = mongo.Server,Db = mongo.Db,
-    BSON = mongo.BSONPure;
-var server = new Server('localhost', 27017, {auto_reconnect: true});
-
-db = new Db('test', server);
-
-db.open(function(err, db) {
-    if(!err) {
-        console.log("Connected to 'winedb' database");
-    }
+mongoose.connect('mongodb://localhost/apiTask');
+var Promise = require('promise');
+var schema = new mongoose.Schema({
+    name: {type: String},
+    id: Number,
+    state_id: Number,
+    district_id: Number,
+    subdistrict_id: Number
 });
-var populateState = function() {
-    var data = require('./states');
-    db.collection('state', function(err, collection) {
-        collection.insert(data, {safe:true}, function(err, result) {});
-    });
+// console.log(schema,"schema");
+var State = mongoose.model("State", schema);
+
+var insertStates = function(){
+    console.log("insidefunction");
+    var stateList = require("./states");
+    stateList.map(state => new State(state).save());
 };
 
-var populateDistrict = function() {
-    var data = require('./districts');
-    db.collection('district', function(err, collection) {
-        collection.insert(data, {safe:true}, function(err, result) {});
-    });
+var insertDistricts = function () {
+    var districtList = require("./districts");
+    districtList.map(district => new State(district).save());
 };
 
-var populateSubDistrict = function() {
-    var data = require('./subdistricts');
-    db.collection('subDistrict', function(err, collection) {
-        collection.insert(data, {safe:true}, function(err, result) {});
-    });
-};
+var insertSubDistricts = function () {
+    var subDistrictList = require("./subdistricts");
+    subDistrictList.map(subDistrict => new State(subDistrict).save());
+}
+
+var removeData = function(){
+   var s = State.remove({});
+    console.log("removed succesfully");
+    return Promise.all([s]);
+}
+
+console.log("state",State,"state");
 
 module.exports = {
     loadData: function(req, res) {
-        db.collection('state', function(err, collection) {
-            collection.remove({}, {safe:true}, function(err, result) {
-                if (err) {
-                    res.send({'error':'An error has occurred - ' + err});
-                } else {
-                    console.log('' + result + ' document(s) deleted');
-                }
-            });
-        });
-        db.collection('district', function(err, collection) {
-            collection.remove({}, {safe:true}, function(err, result) {
-                if (err) {
-                    res.send({'error':'An error has occurred - ' + err});
-                } else {
-                    console.log('' + result + ' document(s) deleted');
-                }
-            });
-        });
-        db.collection('subDistrict', function(err, collection) {
-            collection.remove({}, {safe:true}, function(err, result) {
-                if (err) {
-                    res.send({'error':'An error has occurred - ' + err});
-                } else {
-                    console.log('' + result + ' document(s) deleted');
-                }
-            });
-        });
-        db.collection('state', function(err, collection) {
-            if (err) {
-                console.log("The 'wines' collection doesn't exist. Creating it with sample data...",err);
-            }
-            else{
-                populateState();
-            }
-        });
-        db.collection('district', function(err, collection) {
-            if (err) {
-                console.log("The 'states' collection doesn't exist. Creating it with sample data...",err);
-            }
-            else{
-                populateDistrict();
-            }
-        });
-        db.collection('subDistrict', function(err, collection) {
-            if (err) {
-                console.log("The 'states' collection doesn't exist. Creating it with sample data...",err);
-            }
-            else{
-                populateSubDistrict();
-            }
-        });
+        // removeData().then(() => {insertStates()},() => {insertDistricts()});
+        removeData().then(() => {insertStates()}).then(() => {insertDistricts()}).then(() => {insertSubDistricts()});
+        res.json("data loaded");
     },
 
     findStates: function(req, res) {
@@ -98,28 +54,25 @@ module.exports = {
         var stateName = req.param('name');
         if(stateName == undefined)
         {
-            db.collection('state', function(err, collection) {
-                collection.find().toArray(function(err, items) {
-                    res.json(items);
-                });
+            State.find({state_id:null,district_id:null}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         }
         else
-        {   console.log("insideelse");
-            db.collection('state', function(err, collection) {
-                collection.findOne({'name':stateName}, function(err, item) {
-                    res.json(item);
-                });
+        {
+            State.find({name:stateName,state_id:null,district_id:null}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         }
     },
 
     findStatesById: function(req, res) {
         var id = req.params.state_id;
-        db.collection('state', function(err, collection) {
-            collection.findOne({'id':id}, function(err, item) {
-                res.json(item);
-            });
+        State.find({id: id,state_id:null}, function(err, state) {
+            if (err) throw err;
+            res.json(state);
         });
     },
 
@@ -128,58 +81,54 @@ module.exports = {
         var districtName = req.param('name');
         if(districtName == undefined)
         {
-            db.collection('district', function(err, collection) {
-                collection.find().toArray(function(err, items) {
-                    res.json(items);
-                });
+            State.find({state_id:{ $ne: null }}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         }
         else
         {
-            db.collection('district', function(err, collection) {
-                collection.findOne({'name':districtName}, function(err, item) {
-                    res.json(item);
-                });
+            State.find({name:districtName,state_id:{ $ne: null }}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         }
+
     },
 
     findDistrictsInState: function(req, res) {
         var id = req.params.state_id;
-        db.collection('district', function(err, collection) {
-            collection.find({'state_id':id}).toArray(function(err, items) {
-                res.json(items);
-            });
+        State.find({state_id:id}, function(err, states) {
+            if (err) throw err;
+            res.json(states);
         });
     },
 
     findDistrictWithInState: function(req, res) {
         var stateId = req.params.state_id;
         var districtId = req.params.district_id;
-        db.collection('district', function(err, collection) {
-            collection.find({'state_id':stateId,'id':districtId}).toArray(function(err, items) {
-                res.json(items);
-            });
+        console.log(stateId,districtId);
+        State.find({state_id:stateId,id:districtId}, function(err, states) {
+            if (err) throw err;
+            res.json(states);
         });
     },
 
-    findSubDistrcts:  function(req, res) {
+    findSubDistricts:  function(req, res) {
         var subDistrictName = null;
         var subDistrictName = req.param('name');
         if(subDistrictName == undefined)
         {
-            db.collection('subDistrict', function(err, collection) {
-                collection.find().toArray(function(err, items) {
-                    res.json(items);
-                });
+            State.find({district_id:{ $ne: null }}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         }
         else
         {
-            db.collection('subDistrict', function(err, collection) {
-                collection.findOne({'name':subDistrictName}, function(err, item) {
-                    res.json(item);
-                });
+            State.find({name:subDistrictName,district_id:{ $ne: null }}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         }
     },
@@ -187,14 +136,12 @@ module.exports = {
     findSubDistrictsWithInDistrict: function(req, res) {
         var stateId = req.params.state_id;
         var districtId = req.params.district_id;
-        db.collection('district', function(err, collection) {
-            collection.find({'state_id':stateId,'id':districtId}).toArray(function(err, item) {
-                var stateDistrictId = item[0].id;
-                db.collection('subDistrict', function(err, collection) {
-                    collection.find({'district_id':stateDistrictId}).toArray(function(err, items) {
-                        res.json(items);
-                    });
-                });
+        State.find({state_id:stateId,id:districtId}, function(err, state) {
+            if (err) throw err;
+            var stateDistrictId = state[0].id;
+            State.find({district_id:stateDistrictId}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         });
     },
@@ -204,14 +151,12 @@ module.exports = {
         var districtId = req.params.district_id;
         var subDistrictId = req.params.subdistrict_id;
         var subDistrictWithStateIdDistrictId = [];
-        db.collection('district', function(err, collection) {
-            collection.find({'state_id':stateId,'id':districtId}).toArray(function(err, item) {
-                var stateDistrictId = item[0].id;
-                db.collection('subDistrict', function(err, collection) {
-                    collection.find({'district_id':stateDistrictId,'id':subDistrictId}).toArray(function(err, items) {
-                        res.json(items);
-                    });
-                });
+        State.find({state_id:stateId,id:districtId}, function(err, state) {
+            if (err) throw err;
+            var stateDistrictId = state[0].id;
+            State.find({district_id:stateDistrictId,id:subDistrictId}, function(err, states) {
+                if (err) throw err;
+                res.json(states);
             });
         });
     },
